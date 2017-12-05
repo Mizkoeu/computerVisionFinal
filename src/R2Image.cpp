@@ -1174,7 +1174,7 @@ frameProcessing(R2Image * otherImage)
       double xDelta = matchX - (double)matchList[j].first;
       double yDelta = matchY - (double)matchList[j].second;
       double error = xDelta * xDelta + yDelta * yDelta;
-      if (error <= 9) {
+      if (error <= 7) {
         //if error is lower than threshold, then count as inlier.
         inlier.push_back(j);
       }
@@ -1187,7 +1187,6 @@ frameProcessing(R2Image * otherImage)
 
   // Now that we have all the inlier points, we can compute a much more precise
   // homography matrix using all these points in homographyEstimate.
-  // double** homographyMat;
   std::vector<int> origin;
   std::vector<int> match;
   for (int i=0;i<maxInlier.size();i++) {

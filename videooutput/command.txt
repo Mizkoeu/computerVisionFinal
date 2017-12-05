@@ -1,0 +1,1 @@
+../ffmpeg-3.4/ffmpeg -r 24 -f image2 -s 1920x1080 -i output%07d.jpg  -pix_fmt yuv420p test.mp4

@@ -79,6 +79,7 @@ class R2Image {
   // further operations
   void drawPoint(int x, int y, std::string color);
   void drawLine(int x1, int y1, int x2, int y2, std::string color);
+  void drawImage(std::vector<std::pair<int, int> > v);
   void blendOtherImageTranslated(R2Image * otherImage);
   R2Image stitchOtherImageHomography(R2Image * otherImage);
   void blendOtherImageHomography(R2Image * otherImage);
@@ -107,6 +108,7 @@ class R2Image {
   int width;
   int height;
   std::vector<std::pair<int, int> > curFeatures;
+  double** curHomography;
 };
 
 

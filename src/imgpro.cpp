@@ -16,8 +16,6 @@
 // modified by Chris DeCoro, 2007
 //
 
-
-
 // Include files
 
 #include <stdio.h>
@@ -143,8 +141,8 @@ main(int argc, char **argv)
 	else if (!strcmp(argv[i], "-video")) {
 		printf("Video processing started\n");
 
-		char inputName[100] = "../videocopilot1/input%07d.jpg";
-		char outputName[100] = "../videocopilot2/output%07d.jpg";
+		char inputName[100] = "../videoinput/input%07d.jpg";
+		char outputName[100] = "../videooutput/output%07d.jpg";
 
 		R2Image *mainImage = new R2Image();
 		char currentFilename[100];
@@ -162,24 +160,24 @@ main(int argc, char **argv)
 
 		// =============== VIDEO PROCESSING ===============
 
-
+    mainImage->Harris(2.0f);
 		// here you could call mainImage->FirstFrameProcessing( );
 
 		int end = 88;
-    int division = 1;
+    // int division = 1;
 
-    for (int j = 0; j < division; j++) {
-      mainImage->Harris(2.0f);
-  		for (int i = 1; i < end/division; i++) {
-        int index = j*end/division+i;
+    // for (int j = 0; j < division; j++) {
+      // mainImage->Harris(2.0f);
+  		for (int i = 1; i < end; i++) {
+        // int index = j*end/division+i;
   			R2Image *currentImage = new R2Image();
   			if (!currentImage) {
   				fprintf(stderr, "Unable to allocate image %d\n",i);
   				exit(-1);
   			}
 
-  			sprintf(currentFilename, inputName, index);
-  			sprintf(currentOutputFilename, outputName, index);
+  			sprintf(currentFilename, inputName, i);
+  			sprintf(currentOutputFilename, outputName, i);
 
   			printf("Processing file %s\n", currentFilename);
   			if (!currentImage->Read(currentFilename)) {
@@ -197,7 +195,7 @@ main(int argc, char **argv)
   			}
   			delete currentImage;
   		}
-    }
+    // }
 		delete mainImage;
 		// Return success
 		return EXIT_SUCCESS;

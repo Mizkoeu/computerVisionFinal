@@ -25,6 +25,10 @@ R2Image(void)
     width(0),
     height(0)
 {
+  curHomography = dmatrix(1, 3, 1, 3);
+  curHomography[1][1] = 1.0;
+  curHomography[2][2] = 1.0;
+  curHomography[3][3] = 1.0;
 }
 
 
@@ -89,9 +93,9 @@ R2Image(const R2Image& image)
   // Copy pixels
   for (int i = 0; i < npixels; i++)
     pixels[i] = image.pixels[i];
+
+  // curHomography = image.curHomography;
 }
-
-
 
 R2Image::
 ~R2Image(void)
@@ -99,8 +103,6 @@ R2Image::
   // Free image pixels
   if (pixels) delete [] pixels;
 }
-
-
 
 R2Image& R2Image::
 operator=(const R2Image& image)
@@ -244,8 +246,6 @@ svdTest(void)
 	return;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////
 // Image processing functions
 // YOU IMPLEMENT THE FUNCTIONS IN THIS SECTION
@@ -327,8 +327,6 @@ LoG(void)
   fprintf(stderr, "LoG() not implemented\n");
 }
 
-
-
 void R2Image::
 ChangeSaturation(double factor)
 {
@@ -338,7 +336,6 @@ ChangeSaturation(double factor)
   // FILL IN IMPLEMENTATION HERE (REMOVE PRINT STATEMENT WHEN DONE)
   fprintf(stderr, "ChangeSaturation(%g) not implemented\n", factor);
 }
-
 
 // Linear filtering ////////////////////////////////////////////////
 void R2Image::
@@ -464,9 +461,9 @@ Harris(double sigma)
   std::cout << "There are in total "<< harris2DArray.size() << " feature points\n";
   printf("Harris scores are computed!\n");
 
-  free(sobelXY);
-  free(sobelX2);
-  free(sobelY2);
+  delete sobelXY;
+  delete sobelX2;
+  delete sobelY2;
   std::vector<std::pair<int, int> > featureData;
 
   //sort the harris2DArray
@@ -594,6 +591,19 @@ drawLine(int x1, int y1, int x2, int y2, std::string color)
       }
     }
   }
+}
+
+void R2Image::
+drawImage(std::vector<std::pair<int, int> > v) {
+  // int x1 = v.at(0).first;
+  // int y1 = v.at(0).second;
+  // int x2 = v.at(1).first;
+  // int y2 = v.at(1).second;
+  // int x3 = v.at(2).first;
+  // int y3 = v.at(2).second;
+  // int x4 = v.at(3).first;
+  // int y4 = v.at(3).second;
+
 }
 
 void R2Image::
@@ -1175,38 +1185,44 @@ frameProcessing(R2Image * otherImage)
     }
   }
 
-  //Now that we have all the inlier points, we can compute a much more precise
-  //homography matrix using all these points in homographyEstimate.
+  // Now that we have all the inlier points, we can compute a much more precise
+  // homography matrix using all these points in homographyEstimate.
   // double** homographyMat;
-  // std::vector<int> origin;
-  // std::vector<int> match;
-  // for (int i=0;i<maxInlier.size();i++) {
-  //   int index = maxInlier[i];
-  //   origin.push_back(features[index].first);
-  //   origin.push_back(features[index].second);
-  //   match.push_back(matchList[index].first);
-  //   match.push_back(matchList[index].second);
-  // }
-  // homographyMat = multiplePointHomography(origin, match);
-
-  // for (int y = 0; y < height; y++) {
-  //   for (int x = 0; x < width; x++) {
-  //     double scale = homographyMat[3][1] * x
-  //                  + homographyMat[3][2] * y
-  //                  + homographyMat[3][3];
-  //     double matchX = (homographyMat[1][1] * x
-  //                    + homographyMat[1][2] * y
-  //                    + homographyMat[1][3]) / scale;
-  //     double matchY = (homographyMat[2][1] * x
-  //                    + homographyMat[2][2] * y
-  //                    + homographyMat[2][3]) / scale;
-  //     if (matchX>= 0 && matchX<width && matchY>=0 && matchY<height) {
-  //       Pixel(x, y) = Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
-  //     }
-  //   }
-  // }
-
+  std::vector<int> origin;
+  std::vector<int> match;
+  for (int i=0;i<maxInlier.size();i++) {
+    int index = maxInlier[i];
+    origin.push_back(features[index].first);
+    origin.push_back(features[index].second);
+    match.push_back(matchList[index].first);
+    match.push_back(matchList[index].second);
+  }
+  double** homographyMat = multiplePointHomography(origin, match);
+  double** newHomography = matrixMul(homographyMat, curHomography);
+  // otherImage->curHomography = curHomography;
+  // double** inverseHomography = inverseCmp(homographyMat);
   *this = R2Image(*otherImage);
+  this->curFeatures = matchList;
+  this->curHomography = newHomography;
+
+  for (int y = 500; y < 900; y++) {
+    for (int x = 500; x < 900; x++) {
+      double scale = newHomography[3][1] * x
+                   + newHomography[3][2] * y
+                   + newHomography[3][3];
+      double matchX = (newHomography[1][1] * x
+                     + newHomography[1][2] * y
+                     + newHomography[1][3]) / scale;
+      double matchY = (newHomography[2][1] * x
+                     + newHomography[2][2] * y
+                     + newHomography[2][3]) / scale;
+      if (matchX>= 0 && matchX<otherImage->width && matchY>=0 && matchY<otherImage->height) {
+        // otherImage->Pixel(x, y) = otherImage->Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
+        otherImage->Pixel(matchX, matchY) = R2red_pixel;
+      }
+    }
+  }
+
   for (int i=0;i<matchList.size();i++) {
     int x1 = features.at(i).first;
     int y1 = features.at(i).second;
@@ -1221,8 +1237,6 @@ frameProcessing(R2Image * otherImage)
     }
 
   }
-
-  this->curFeatures = matchList;
 
 	return;
 }

@@ -107,6 +107,7 @@ class R2Image {
   int npixels;
   int width;
   int height;
+  std::vector<std::pair<int, int> > originFeatures;
   std::vector<std::pair<int, int> > curFeatures;
   double** curHomography;
 };

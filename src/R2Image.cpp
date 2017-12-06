@@ -490,6 +490,7 @@ Harris(double sigma)
     index--;
   }
   curFeatures = featureData;
+  originFeatures = featureData;
 
   return featureData;
 }
@@ -1151,8 +1152,8 @@ frameProcessing(R2Image * otherImage)
       int randIndex = v[random];
       // std::cout << randIndex << " and the are " << v.size() << "left to test." << "\n";
       v.erase(v.begin() + random);
-      origin[k*2] = features[randIndex].first;
-      origin[k*2+1] = features[randIndex].second;
+      origin[k*2] = originFeatures[randIndex].first;
+      origin[k*2+1] = originFeatures[randIndex].second;
       match[k*2] = matchList[randIndex].first;
       match[k*2+1] = matchList[randIndex].second;
     }
@@ -1162,19 +1163,19 @@ frameProcessing(R2Image * otherImage)
     //COMPUTE THE MATCH FEATURE POINT
     //loop through all feature points and find the error distance.
     for (int j=0;j<features.size();j++) {
-      double scale = homographyMatrix[3][1] * features[j].first
-                + homographyMatrix[3][2] * features[j].second
+      double scale = homographyMatrix[3][1] * originFeatures[j].first
+                + homographyMatrix[3][2] * originFeatures[j].second
                 + homographyMatrix[3][3];
-      double matchX = (homographyMatrix[1][1] * features[j].first
-                  + homographyMatrix[1][2] * features[j].second
+      double matchX = (homographyMatrix[1][1] * originFeatures[j].first
+                  + homographyMatrix[1][2] * originFeatures[j].second
                   + homographyMatrix[1][3]) / scale;
-      double matchY = (homographyMatrix[2][1] * features[j].first
-                     + homographyMatrix[2][2] * features[j].second
+      double matchY = (homographyMatrix[2][1] * originFeatures[j].first
+                     + homographyMatrix[2][2] * originFeatures[j].second
                      + homographyMatrix[2][3]) / scale;
       double xDelta = matchX - (double)matchList[j].first;
       double yDelta = matchY - (double)matchList[j].second;
       double error = xDelta * xDelta + yDelta * yDelta;
-      if (error <= 7) {
+      if (error <= 9) {
         //if error is lower than threshold, then count as inlier.
         inlier.push_back(j);
       }
@@ -1191,30 +1192,30 @@ frameProcessing(R2Image * otherImage)
   std::vector<int> match;
   for (int i=0;i<maxInlier.size();i++) {
     int index = maxInlier[i];
-    origin.push_back(features[index].first);
-    origin.push_back(features[index].second);
+    origin.push_back(originFeatures[index].first);
+    origin.push_back(originFeatures[index].second);
     match.push_back(matchList[index].first);
     match.push_back(matchList[index].second);
   }
   double** homographyMat = multiplePointHomography(origin, match);
-  double** newHomography = matrixMul(homographyMat, curHomography);
+  // double** newHomography = matrixMul(homographyMat, curHomography);
   // otherImage->curHomography = curHomography;
   // double** inverseHomography = inverseCmp(homographyMat);
   *this = R2Image(*otherImage);
   this->curFeatures = matchList;
-  this->curHomography = newHomography;
+  this->curHomography = homographyMat;
 
   for (int y = 500; y < 900; y++) {
     for (int x = 500; x < 900; x++) {
-      double scale = newHomography[3][1] * x
-                   + newHomography[3][2] * y
-                   + newHomography[3][3];
-      double matchX = (newHomography[1][1] * x
-                     + newHomography[1][2] * y
-                     + newHomography[1][3]) / scale;
-      double matchY = (newHomography[2][1] * x
-                     + newHomography[2][2] * y
-                     + newHomography[2][3]) / scale;
+      double scale = homographyMat[3][1] * x
+                   + homographyMat[3][2] * y
+                   + homographyMat[3][3];
+      double matchX = (homographyMat[1][1] * x
+                     + homographyMat[1][2] * y
+                     + homographyMat[1][3]) / scale;
+      double matchY = (homographyMat[2][1] * x
+                     + homographyMat[2][2] * y
+                     + homographyMat[2][3]) / scale;
       if (matchX>= 0 && matchX<otherImage->width && matchY>=0 && matchY<otherImage->height) {
         // otherImage->Pixel(x, y) = otherImage->Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
         otherImage->Pixel(matchX, matchY) = R2red_pixel;

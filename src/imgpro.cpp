@@ -167,7 +167,6 @@ main(int argc, char **argv)
     // int division = 1;
 
     // for (int j = 0; j < division; j++) {
-      // mainImage->Harris(2.0f);
   		for (int i = 1; i < end; i++) {
         // int index = j*end/division+i;
   			R2Image *currentImage = new R2Image();

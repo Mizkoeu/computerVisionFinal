@@ -424,7 +424,7 @@ Harris(double sigma)
 	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
   //this->Greyscale();
   int featureDistance = 50;
-  int numFeature = 150;
+  int numFeature = 200;
   R2Image* sobelX2 = new R2Image(*this);
   sobelX2->SobelX();
   R2Image* sobelY2 = new R2Image(*this);
@@ -1175,7 +1175,7 @@ frameProcessing(R2Image * otherImage)
       double xDelta = matchX - (double)matchList[j].first;
       double yDelta = matchY - (double)matchList[j].second;
       double error = xDelta * xDelta + yDelta * yDelta;
-      if (error <= 9) {
+      if (error <= 16) {
         //if error is lower than threshold, then count as inlier.
         inlier.push_back(j);
       }
@@ -1185,28 +1185,34 @@ frameProcessing(R2Image * otherImage)
       maxInlier = inlier;
     }
   }
+  std::cout<< "Current Max Inlier Size is: " << maxInlier.size() <<"\n";
 
   // Now that we have all the inlier points, we can compute a much more precise
   // homography matrix using all these points in homographyEstimate.
   std::vector<int> origin;
   std::vector<int> match;
+  std::vector< std::pair <int, int> > newMatchList;
+  std::vector< std::pair <int, int> > newOriginList;
   for (int i=0;i<maxInlier.size();i++) {
     int index = maxInlier[i];
     origin.push_back(originFeatures[index].first);
     origin.push_back(originFeatures[index].second);
     match.push_back(matchList[index].first);
     match.push_back(matchList[index].second);
+    newOriginList.push_back(originFeatures[index]);
+    newMatchList.push_back(matchList[index]);
   }
-  double** homographyMat = multiplePointHomography(origin, match);
+  double** homographyMat = multiplePointHomography(match, origin);
   // double** newHomography = matrixMul(homographyMat, curHomography);
   // otherImage->curHomography = curHomography;
   // double** inverseHomography = inverseCmp(homographyMat);
   *this = R2Image(*otherImage);
-  this->curFeatures = matchList;
-  this->curHomography = homographyMat;
+  this->originFeatures = newOriginList;
+  this->curFeatures = newMatchList;
+  // this->curHomography = homographyMat;
 
-  for (int y = 500; y < 900; y++) {
-    for (int x = 500; x < 900; x++) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
       double scale = homographyMat[3][1] * x
                    + homographyMat[3][2] * y
                    + homographyMat[3][3];
@@ -1216,9 +1222,9 @@ frameProcessing(R2Image * otherImage)
       double matchY = (homographyMat[2][1] * x
                      + homographyMat[2][2] * y
                      + homographyMat[2][3]) / scale;
-      if (matchX>= 0 && matchX<otherImage->width && matchY>=0 && matchY<otherImage->height) {
+      if (matchX>= 500 && matchX<900 && matchY>=500 && matchY<900) {
         // otherImage->Pixel(x, y) = otherImage->Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
-        otherImage->Pixel(matchX, matchY) = R2red_pixel;
+        otherImage->Pixel(x, y) = R2red_pixel;
       }
     }
   }
@@ -1228,14 +1234,17 @@ frameProcessing(R2Image * otherImage)
     int y1 = features.at(i).second;
     int x2 = matchList.at(i).first;
     int y2 = matchList.at(i).second;
-    if (std::find(maxInlier.begin(), maxInlier.end(), i) != maxInlier.end()) {
+    std::vector<int>::iterator pos = std::find(maxInlier.begin(), maxInlier.end(), i);
+    if (pos != maxInlier.end()) {
+      // newMatchList.push_back(matchList.at(i));
       // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "yellow");
+      // maxInlier.erase(pos);
       otherImage->drawLine(x1, y1, x2, y2, "false");
-    } else {
-      // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
-      otherImage->drawLine(x1, y1, x2, y2, "true");
     }
-
+    // } else {
+    //   // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
+    //   // otherImage->drawLine(x1, y1, x2, y2, "true");
+    // }
   }
 
 	return;

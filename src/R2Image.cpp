@@ -1076,7 +1076,7 @@ blendOtherImageHomography(R2Image * otherImage)
 }
 
 void R2Image::
-frameProcessing(R2Image * otherImage)
+frameProcessing(R2Image * otherImage, R2Image * skyImage)
 {
 	// find at least 100 features on this image, and another 100 on the "otherImage". Based on these,
 	// compute the matching homography, and blend the transformed "otherImage" into this image with a 50% opacity.
@@ -1222,9 +1222,11 @@ frameProcessing(R2Image * otherImage)
       double matchY = (homographyMat[2][1] * x
                      + homographyMat[2][2] * y
                      + homographyMat[2][3]) / scale;
-      if (matchX>= 500 && matchX<900 && matchY>=500 && matchY<900) {
+      if (matchX>= 0 && matchX<skyImage->width && matchY>=450 && matchY<skyImage->height) {
         // otherImage->Pixel(x, y) = otherImage->Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
-        otherImage->Pixel(x, y) = R2red_pixel;
+        if (otherImage->Pixel(x, y).Luminance() >= .8) {
+          otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY);
+        }
       }
     }
   }

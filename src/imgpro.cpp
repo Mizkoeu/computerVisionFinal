@@ -145,6 +145,8 @@ main(int argc, char **argv)
 		char outputName[100] = "../videooutput/output%07d.jpg";
 
 		R2Image *mainImage = new R2Image();
+    R2Image *skyImage = new R2Image("../sky.jpg");
+
 		char currentFilename[100];
 		char currentOutputFilename[100];
 		if (!mainImage) {
@@ -184,7 +186,7 @@ main(int argc, char **argv)
   				exit(-1);
   			}
   			//currentImage->Brighten((float)i/(float)end);
-        mainImage->frameProcessing(currentImage);
+        mainImage->frameProcessing(currentImage, skyImage);
   			// where FrameProcessing would process the current input currentImage, as well as writing the output to currentImage
 
   			// write result to file

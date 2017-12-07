@@ -83,7 +83,7 @@ class R2Image {
   void blendOtherImageTranslated(R2Image * otherImage);
   R2Image stitchOtherImageHomography(R2Image * otherImage);
   void blendOtherImageHomography(R2Image * otherImage);
-  void frameProcessing(R2Image * otherImage);
+  void frameProcessing(R2Image * otherImage, R2Image * skyImage);
   double** multiplePointHomography(std::vector<int> origin, std::vector<int> match);
   double** homographyEstimate(double* origin, double* match);
 

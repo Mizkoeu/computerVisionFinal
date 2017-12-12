@@ -145,7 +145,7 @@ main(int argc, char **argv)
 		char outputName[100] = "../videooutput/output%07d.jpg";
 
 		R2Image *mainImage = new R2Image();
-    R2Image *skyImage = new R2Image("../sky.jpg");
+    R2Image *skyImage = new R2Image("../tokyo.jpg");
 
 		char currentFilename[100];
 		char currentOutputFilename[100];
@@ -165,12 +165,12 @@ main(int argc, char **argv)
     mainImage->Harris(2.0f);
 		// here you could call mainImage->FirstFrameProcessing( );
 
-		int end = 88;
+		int end = 200;
     // int division = 1;
 
     // for (int j = 0; j < division; j++) {
   		for (int i = 1; i < end; i++) {
-        // int index = j*end/division+i;
+        float percentage = i*1.0/end;
   			R2Image *currentImage = new R2Image();
   			if (!currentImage) {
   				fprintf(stderr, "Unable to allocate image %d\n",i);
@@ -185,10 +185,10 @@ main(int argc, char **argv)
   				fprintf(stderr, "Unable to read image %d\n", i);
   				exit(-1);
   			}
-  			//currentImage->Brighten((float)i/(float)end);
-        mainImage->frameProcessing(currentImage, skyImage);
-  			// where FrameProcessing would process the current input currentImage, as well as writing the output to currentImage
-
+        // Color correction
+        // currentImage->ColorCorrection(.85, .9, 1.08);
+        // FrameProcessing would process the current input currentImage, as well as writing the output to currentImage
+        mainImage->frameProcessing(currentImage, skyImage, percentage);
   			// write result to file
   			if (!currentImage->Write(currentOutputFilename)) {
   				fprintf(stderr, "Unable to write %s\n", currentOutputFilename);
@@ -250,7 +250,7 @@ main(int argc, char **argv)
       CheckOption(*argv, argc, 2);
       double factor = atof(argv[1]);
       argv += 2, argc -= 2;
-      image->ChangeSaturation(factor);
+      // image->ColorCorrection(factor, 1, 1);
     }
 	else if (!strcmp(*argv, "-harris")) {
       CheckOption(*argv, argc, 2);

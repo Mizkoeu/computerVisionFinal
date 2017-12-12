@@ -24,6 +24,7 @@ class R2Pixel {
   double *Components(void);
 
   // Property functions/operators
+  double pixelDistance(void) const;
   double Luminance(void) const;
   bool IsBlack(void) const;
   bool IsWhite(void) const;
@@ -163,7 +164,12 @@ IsWhite (void) const
   return ((c[0] == 1.0) && (c[1] == 1.0) && (c[2] == 1.0));
 }
 
-
+inline double R2Pixel::
+pixelDistance(void) const
+{
+  // Return luminance
+  return sqrt(c[0] * c[0] + c[1] * c[1] + c[2] * c[2]);
+}
 
 inline double R2Pixel::
 Luminance(void) const

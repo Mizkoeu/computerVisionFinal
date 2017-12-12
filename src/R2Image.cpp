@@ -328,13 +328,17 @@ LoG(void)
 }
 
 void R2Image::
-ChangeSaturation(double factor)
+ColorCorrection(double r, double g, double b)
 {
-  // Changes the saturation of an image
-  // Find a formula that changes the saturation without affecting the image brightness
-
-  // FILL IN IMPLEMENTATION HERE (REMOVE PRINT STATEMENT WHEN DONE)
-  fprintf(stderr, "ChangeSaturation(%g) not implemented\n", factor);
+  // fprintf(stderr, "Color correction\n", factor);
+  for (int j = 0; j < height; j++) {
+    for (int i = 0; i < width; i++) {
+      Pixel(i, j).SetRed(Pixel(i, j).Red()*r);
+      Pixel(i, j).SetGreen(Pixel(i, j).Green()*g);
+      Pixel(i, j).SetBlue(Pixel(i, j).Blue()*b);
+    }
+  }
+  return;
 }
 
 // Linear filtering ////////////////////////////////////////////////
@@ -423,8 +427,8 @@ Harris(double sigma)
   // Harris corner detector. Make use of the previously developed filters, such as the Gaussian blur filter
 	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
   //this->Greyscale();
-  int featureDistance = 50;
-  int numFeature = 200;
+  int featureDistance = 48;
+  int numFeature = 400;
   R2Image* sobelX2 = new R2Image(*this);
   sobelX2->SobelX();
   R2Image* sobelY2 = new R2Image(*this);
@@ -440,9 +444,9 @@ Harris(double sigma)
 
   printf("Blurrrrrring...\n");
   sobelX2->Blur(sigma);
-  printf("first blur done\n");
+  // printf("first blur done\n");
   sobelY2->Blur(sigma);
-  printf("second blur done\n");
+  // printf("second blur done\n");
   sobelXY->Blur(sigma);
 
   printf("Finished blrrring...\n");
@@ -1076,13 +1080,34 @@ blendOtherImageHomography(R2Image * otherImage)
 }
 
 void R2Image::
-frameProcessing(R2Image * otherImage, R2Image * skyImage)
+frameProcessing(R2Image * otherImage, R2Image * skyImage, float percentage)
 {
 	// find at least 100 features on this image, and another 100 on the "otherImage". Based on these,
 	// compute the matching homography, and blend the transformed "otherImage" into this image with a 50% opacity.
 	fprintf(stderr, "fit other image using a homography and blend imageB over imageA\n");
   // R2Image temp(*this);
   // std::vector<std::pair<int, int> > features = temp.Harris(2.0);
+  if (curFeatures.size() <= 48) {
+    // R2Image temp(*this);
+    R2Image *temp = new R2Image(*this);
+    std::vector<std::pair<int, int> > newFeatures = temp->Harris(2.0f);
+    for (int i=0;i<newFeatures.size();i++) {
+      curFeatures.push_back(newFeatures[i]);
+      double x = newFeatures[i].first;
+      double y = newFeatures[i].second;
+      double scale = curHomography[3][1] * x
+                   + curHomography[3][2] * y
+                   + curHomography[3][3];
+      double matchX = (curHomography[1][1] * x
+                     + curHomography[1][2] * y
+                     + curHomography[1][3]) / scale;
+      double matchY = (curHomography[2][1] * x
+                     + curHomography[2][2] * y
+                     + curHomography[2][3]) / scale;
+      originFeatures.push_back(std::make_pair(matchX, matchY));
+    }
+    delete temp;
+  }
   std::vector<std::pair<int, int> > features = curFeatures;
 
   std::cout << "OK, Harris filter is done. Move on to create matchList...\n";
@@ -1110,8 +1135,8 @@ frameProcessing(R2Image * otherImage, R2Image * skyImage)
         //for each point in the window, define a small 12 px by 12 px panel for SSD calculation.
           R2Pixel* ssdDiff = new R2Pixel(0, 0, 0, 0);
 
-          for (int row=-featureSize;row<featureSize;row++) {
-            for (int col=-featureSize;col<featureSize;col++) {
+          for (int row=-featureSize;row<=featureSize;row++) {
+            for (int col=-featureSize;col<=featureSize;col++) {
               int otherX = std::max(0, std::min(width, i+col));
               int otherY = std::max(0, std::min(height, j+row));
               int thisX = std::max(0, std::min(width, x+col));
@@ -1124,7 +1149,7 @@ frameProcessing(R2Image * otherImage, R2Image * skyImage)
           if (i == min_X && j == min_Y) {
             minSSD = *ssdDiff;
             matchedFeature = std::make_pair(i, j);
-          } else if (ssdDiff->Luminance() < minSSD.Luminance()) {
+          } else if (ssdDiff->pixelDistance() < minSSD.pixelDistance()) {
             //set minSSD if it turns out that ssdDiff is smaller.
             minSSD = *ssdDiff;
             matchedFeature = std::make_pair(i, j);
@@ -1209,24 +1234,31 @@ frameProcessing(R2Image * otherImage, R2Image * skyImage)
   *this = R2Image(*otherImage);
   this->originFeatures = newOriginList;
   this->curFeatures = newMatchList;
-  // this->curHomography = homographyMat;
+  this->curHomography = homographyMat;
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       double scale = homographyMat[3][1] * x
                    + homographyMat[3][2] * y
                    + homographyMat[3][3];
+      scale *= .8;
       double matchX = (homographyMat[1][1] * x
                      + homographyMat[1][2] * y
                      + homographyMat[1][3]) / scale;
       double matchY = (homographyMat[2][1] * x
                      + homographyMat[2][2] * y
-                     + homographyMat[2][3]) / scale;
-      if (matchX>= 0 && matchX<skyImage->width && matchY>=450 && matchY<skyImage->height) {
+                     + homographyMat[2][3]) / scale - 180;
+      if (matchX>= 0 && matchX<skyImage->width && matchY>=0 && matchY<skyImage->height) {
         // otherImage->Pixel(x, y) = otherImage->Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
-        if (otherImage->Pixel(x, y).Luminance() >= .8) {
-          otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY);
-        }
+        double alphaScore = std::max((otherImage->Pixel(x, y).Luminance() - .3), 0.0) / .7;
+        double heightScore = std::max((y*1.0/(otherImage->height) - .2), 0.0) / .8;
+        double totalScore = alphaScore * heightScore;
+        // if (totalScore >= .80) {totalScore = 1.0;}
+        // float backgroundOpacity = std::max(1.0-percentage*5, 0.0);
+        // if (totalScore)
+        // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(1.0-backgroundOpacity) + otherImage->Pixel(x, y)*(backgroundOpacity);
+        otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(totalScore)//*(1-backgroundOpacity)
+                                + otherImage->Pixel(x, y)*(1-totalScore);//*(backgroundOpacity);
       }
     }
   }
@@ -1242,11 +1274,10 @@ frameProcessing(R2Image * otherImage, R2Image * skyImage)
       // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "yellow");
       // maxInlier.erase(pos);
       otherImage->drawLine(x1, y1, x2, y2, "false");
+    } else {
+      // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
+      otherImage->drawLine(x1, y1, x2, y2, "true");
     }
-    // } else {
-    //   // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
-    //   // otherImage->drawLine(x1, y1, x2, y2, "true");
-    // }
   }
 
 	return;

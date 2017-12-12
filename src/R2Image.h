@@ -63,7 +63,7 @@ class R2Image {
 
   // Per-pixel operations
   void Brighten(double factor);
-  void ChangeSaturation(double factor);
+  void ColorCorrection(double r, double g, double b);
 
   // show how SVD works
   void svdTest();
@@ -83,7 +83,7 @@ class R2Image {
   void blendOtherImageTranslated(R2Image * otherImage);
   R2Image stitchOtherImageHomography(R2Image * otherImage);
   void blendOtherImageHomography(R2Image * otherImage);
-  void frameProcessing(R2Image * otherImage, R2Image * skyImage);
+  void frameProcessing(R2Image * otherImage, R2Image * skyImage, float percentage);
   double** multiplePointHomography(std::vector<int> origin, std::vector<int> match);
   double** homographyEstimate(double* origin, double* match);
 

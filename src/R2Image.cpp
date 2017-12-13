@@ -276,8 +276,8 @@ SobelX(void)
                           {2.0, 0.0, -2.0},
                           {1.0, 0.0, -1.0}};
 
-  for (int y = 1; y <= height - 1; y++) {
-    for (int x = 1; x <= width - 1; x++) {
+  for (int y = 1; y < height - 1; y++) {
+    for (int x = 1; x < width - 1; x++) {
       R2Pixel val;
       for (int ly = -1; ly <= 1; ly++) {
         for (int lx = -1; lx <= 1; lx++) {
@@ -302,8 +302,8 @@ SobelY(void)
                          {0.0, 0.0, 0.0},
                          {1.0, 2.0, 1.0}};
 
-  for (int y = 1; y <= height - 1; y++) {
-    for (int x = 1; x <= width - 1; x++) {
+  for (int y = 1; y < height - 1; y++) {
+    for (int x = 1; x < width - 1; x++) {
       R2Pixel* val = new R2Pixel();
       for (int ly = -1; ly <= 1; ly++) {
         for (int lx = -1; lx <= 1; lx++) {
@@ -428,7 +428,7 @@ Harris(double sigma)
 	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
   //this->Greyscale();
   int featureDistance = 48;
-  int numFeature = 400;
+  int numFeature = 300;
   R2Image* sobelX2 = new R2Image(*this);
   sobelX2->SobelX();
   R2Image* sobelY2 = new R2Image(*this);
@@ -498,7 +498,6 @@ Harris(double sigma)
 
   return featureData;
 }
-
 
 void R2Image::
 Sharpen()
@@ -1080,7 +1079,7 @@ blendOtherImageHomography(R2Image * otherImage)
 }
 
 void R2Image::
-frameProcessing(R2Image * otherImage, R2Image * skyImage, float percentage)
+frameProcessing(R2Image * otherImage, R2Image * skyImage, double percentage, double replaceScale, double xDisplacement, double yDisplacement)
 {
 	// find at least 100 features on this image, and another 100 on the "otherImage". Based on these,
 	// compute the matching homography, and blend the transformed "otherImage" into this image with a 50% opacity.
@@ -1241,24 +1240,22 @@ frameProcessing(R2Image * otherImage, R2Image * skyImage, float percentage)
       double scale = homographyMat[3][1] * x
                    + homographyMat[3][2] * y
                    + homographyMat[3][3];
-      scale *= .8;
+      scale *= replaceScale;
       double matchX = (homographyMat[1][1] * x
                      + homographyMat[1][2] * y
-                     + homographyMat[1][3]) / scale;
+                     + homographyMat[1][3]) / scale - xDisplacement;
       double matchY = (homographyMat[2][1] * x
                      + homographyMat[2][2] * y
-                     + homographyMat[2][3]) / scale - 180;
+                     + homographyMat[2][3]) / scale - yDisplacement;
       if (matchX>= 0 && matchX<skyImage->width && matchY>=0 && matchY<skyImage->height) {
         // otherImage->Pixel(x, y) = otherImage->Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
         double alphaScore = std::max((otherImage->Pixel(x, y).Luminance() - .3), 0.0) / .7;
         double heightScore = std::max((y*1.0/(otherImage->height) - .2), 0.0) / .8;
         double totalScore = alphaScore * heightScore;
-        // if (totalScore >= .80) {totalScore = 1.0;}
-        // float backgroundOpacity = std::max(1.0-percentage*5, 0.0);
-        // if (totalScore)
         // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(1.0-backgroundOpacity) + otherImage->Pixel(x, y)*(backgroundOpacity);
-        otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(totalScore)//*(1-backgroundOpacity)
-                                + otherImage->Pixel(x, y)*(1-totalScore);//*(backgroundOpacity);
+        // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(totalScore)//*(1-backgroundOpacity)
+        //                         + otherImage->Pixel(x, y)*(1-totalScore);//*(backgroundOpacity);
+        otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*otherImage->Pixel(x, y);//*(backgroundOpacity);
       }
     }
   }

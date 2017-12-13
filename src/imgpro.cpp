@@ -133,21 +133,26 @@ main(int argc, char **argv)
     if (!strcmp(argv[i], "-help")) {
       ShowUsage();
     }
-	if (!strcmp(argv[i], "-svdTest")) {
+	  if (!strcmp(argv[i], "-svdTest")) {
       R2Image *image = new R2Image();
-	  image->svdTest();
-	  return 0;
+	    image->svdTest();
+	    return 0;
     }
 	else if (!strcmp(argv[i], "-video")) {
+    double scale = atof(argv[i+1]);
+    double x = atof(argv[i+2]);
+    double y = atof(argv[i+3]);
 		printf("Video processing started\n");
 
-		char inputName[100] = "../videoinput/input%07d.jpg";
-		char outputName[100] = "../videooutput/output%07d.jpg";
+		char inputName[100] = "../board/input%07d.jpg";
+    char inputName2[100] = "../board2/input%07d.jpg";
+		char outputName[100] = "../board3/output%07d.jpg";
 
 		R2Image *mainImage = new R2Image();
-    R2Image *skyImage = new R2Image("../tokyo.jpg");
+    R2Image *skyImage = new R2Image("../crack.jpg");
 
 		char currentFilename[100];
+    char currentFilename2[100];
 		char currentOutputFilename[100];
 		if (!mainImage) {
 			fprintf(stderr, "Unable to allocate image\n");
@@ -166,37 +171,50 @@ main(int argc, char **argv)
 		// here you could call mainImage->FirstFrameProcessing( );
 
 		int end = 200;
-    // int division = 1;
 
-    // for (int j = 0; j < division; j++) {
-  		for (int i = 1; i < end; i++) {
-        float percentage = i*1.0/end;
-  			R2Image *currentImage = new R2Image();
-  			if (!currentImage) {
-  				fprintf(stderr, "Unable to allocate image %d\n",i);
-  				exit(-1);
-  			}
+		for (int i = 1; i < end; i++) {
+      float percentage = i*1.0/end;
+			R2Image *currentImage = new R2Image();
+      R2Image *backImage = new R2Image();
+			if (!currentImage) {
+				fprintf(stderr, "Unable to allocate image %d\n",i);
+				exit(-1);
+			}
+      if (!backImage) {
+				fprintf(stderr, "Unable to allocate image %d\n",i);
+				exit(-1);
+			}
 
-  			sprintf(currentFilename, inputName, i);
-  			sprintf(currentOutputFilename, outputName, i);
+			sprintf(currentFilename, inputName, i);
+      sprintf(currentFilename2, inputName2, i);
+			sprintf(currentOutputFilename, outputName, i);
 
-  			printf("Processing file %s\n", currentFilename);
-  			if (!currentImage->Read(currentFilename)) {
-  				fprintf(stderr, "Unable to read image %d\n", i);
-  				exit(-1);
-  			}
-        // Color correction
-        // currentImage->ColorCorrection(.85, .9, 1.08);
-        // FrameProcessing would process the current input currentImage, as well as writing the output to currentImage
-        mainImage->frameProcessing(currentImage, skyImage, percentage);
-  			// write result to file
-  			if (!currentImage->Write(currentOutputFilename)) {
-  				fprintf(stderr, "Unable to write %s\n", currentOutputFilename);
-  				exit(-1);
-  			}
-  			delete currentImage;
-  		}
-    // }
+			printf("Processing file %s\n", currentFilename);
+			if (!currentImage->Read(currentFilename)) {
+				fprintf(stderr, "Unable to read image %d\n", i);
+				exit(-1);
+			}
+      // printf("Processing file %s\n", currentFilename2);
+      // if (!backImage->Read(currentFilename2)) {
+      //   fprintf(stderr, "Unable to read image %d\n", i);
+      //   exit(-1);
+      // }
+      // Color correction
+      // currentImage->ColorCorrection(.85, .9, 1.08);
+      // FrameProcessing would process the current input currentImage, as well as writing the output to currentImage
+
+      //NOTE: VIDEO REPLACEMENT
+      // mainImage->frameProcessing(currentImage, backImage, percentage, scale, x, y);
+      //NOTE: IMAGE REPLACEMENT
+      mainImage->frameProcessing(currentImage, skyImage, percentage, scale, x, y);
+			// write result to file
+			if (!currentImage->Write(currentOutputFilename)) {
+				fprintf(stderr, "Unable to write %s\n", currentOutputFilename);
+				exit(-1);
+			}
+  		delete currentImage;
+      delete backImage;
+  	}
 		delete mainImage;
 		// Return success
 		return EXIT_SUCCESS;

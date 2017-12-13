@@ -428,7 +428,7 @@ Harris(double sigma)
 	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
   //this->Greyscale();
   int featureDistance = 48;
-  int numFeature = 300;
+  int numFeature = 350;
   R2Image* sobelX2 = new R2Image(*this);
   sobelX2->SobelX();
   R2Image* sobelY2 = new R2Image(*this);
@@ -1250,12 +1250,22 @@ frameProcessing(R2Image * otherImage, R2Image * skyImage, double percentage, dou
       if (matchX>= 0 && matchX<skyImage->width && matchY>=0 && matchY<skyImage->height) {
         // otherImage->Pixel(x, y) = otherImage->Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
         double alphaScore = std::max((otherImage->Pixel(x, y).Luminance() - .3), 0.0) / .7;
+        double skyAlphaScore = std::max((skyImage->Pixel(matchX, matchY).Luminance() - .1), 0.0) / .9;
         double heightScore = std::max((y*1.0/(otherImage->height) - .2), 0.0) / .8;
         double totalScore = alphaScore * heightScore;
         // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(1.0-backgroundOpacity) + otherImage->Pixel(x, y)*(backgroundOpacity);
+        //NOTE: Sky Replacement Blend
         // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(totalScore)//*(1-backgroundOpacity)
         //                         + otherImage->Pixel(x, y)*(1-totalScore);//*(backgroundOpacity);
-        otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*otherImage->Pixel(x, y);//*(backgroundOpacity);
+        //NOTE: Multiply Blend Mode
+        // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*otherImage->Pixel(x, y);//*(backgroundOpacity);
+        //NOTE: Screen Blend Mode
+        // R2Pixel white = R2Pixel(1, 1, 1, 1);
+        // otherImage->Pixel(x, y) = white - (white - skyImage->Pixel(matchX, matchY)) *
+        //                               (white - otherImage->Pixel(x, y));//*(backgroundOpacity);
+        //NOTE: TECH BLEND
+        otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(skyAlphaScore)//*(1-backgroundOpacity)
+                                + otherImage->Pixel(x, y)*(1-skyAlphaScore);//*(backgroundOpacity);
       }
     }
   }
@@ -1276,8 +1286,212 @@ frameProcessing(R2Image * otherImage, R2Image * skyImage, double percentage, dou
       otherImage->drawLine(x1, y1, x2, y2, "true");
     }
   }
-
 	return;
+}
+
+void R2Image::
+frameAlphaProcessing(R2Image * otherImage, R2Image * skyImage, R2Image * alphaImage, double replaceScale, double xDisplacement, double yDisplacement)
+{
+  // find at least 100 features on this image, and another 100 on the "otherImage". Based on these,
+  // compute the matching homography, and blend the transformed "otherImage" into this image with a 50% opacity.
+  fprintf(stderr, "fit other image using a homography and blend imageB over imageA\n");
+  if (curFeatures.size() <= 48) {
+    R2Image *temp = new R2Image(*this);
+    std::vector<std::pair<int, int> > newFeatures = temp->Harris(2.0f);
+    for (int i=0;i<newFeatures.size();i++) {
+      curFeatures.push_back(newFeatures[i]);
+      double x = newFeatures[i].first;
+      double y = newFeatures[i].second;
+      double scale = curHomography[3][1] * x
+                   + curHomography[3][2] * y
+                   + curHomography[3][3];
+      double matchX = (curHomography[1][1] * x
+                     + curHomography[1][2] * y
+                     + curHomography[1][3]) / scale;
+      double matchY = (curHomography[2][1] * x
+                     + curHomography[2][2] * y
+                     + curHomography[2][3]) / scale;
+      originFeatures.push_back(std::make_pair(matchX, matchY));
+    }
+    delete temp;
+  }
+  std::vector<std::pair<int, int> > features = curFeatures;
+
+  std::cout << "OK, Harris filter is done. Move on to create matchList...\n";
+
+  std::vector<std::pair<int, int> > matchList;
+  double windowSize = 0.02;
+  int featureSize = 5;
+
+  std::cout << "featureList contains " << features.size() << " elements...\n";
+
+  //loop through all the feature points
+  for (int n=0;n<features.size();n++) {
+    std::pair<int, int> pair = features[n];
+    int x = pair.first;
+    int y = pair.second;
+    R2Pixel minSSD(0, 0, 0, 0);
+    std::pair<int, int> matchedFeature;
+    int max_X = std::min((int) (x + width*windowSize/2.0), width);
+    int max_Y = std::min((int) (y + height*windowSize/2.0), height);
+    int min_X = std::max((int) (x - width*windowSize/2.0), 0);
+    int min_Y = std::max((int) (y - height*windowSize/2.0), 0);
+    //std::cout << "x goes from " << min_X << " to: " << max_X << "and y goes from "<< min_Y <<" to: " << max_Y << '\n';
+    for (int j = min_Y; j < max_Y; j++) {
+      for (int i = min_X; i < max_X; i++) {
+        //for each point in the window, define a small 12 px by 12 px panel for SSD calculation.
+          R2Pixel* ssdDiff = new R2Pixel(0, 0, 0, 0);
+
+          for (int row=-featureSize;row<=featureSize;row++) {
+            for (int col=-featureSize;col<=featureSize;col++) {
+              int otherX = std::max(0, std::min(width, i+col));
+              int otherY = std::max(0, std::min(height, j+row));
+              int thisX = std::max(0, std::min(width, x+col));
+              int thisY = std::max(0, std::min(height, y+row));
+              R2Pixel diff(Pixel(thisX, thisY) - otherImage->Pixel(otherX, otherY));
+              diff = diff * diff;
+              *ssdDiff += diff;
+            }
+          }
+          if (i == min_X && j == min_Y) {
+            minSSD = *ssdDiff;
+            matchedFeature = std::make_pair(i, j);
+          } else if (ssdDiff->pixelDistance() < minSSD.pixelDistance()) {
+            //set minSSD if it turns out that ssdDiff is smaller.
+            minSSD = *ssdDiff;
+            matchedFeature = std::make_pair(i, j);
+          }
+      }
+    }
+    matchList.push_back(matchedFeature);
+  }
+
+  std::vector<int> maxInlier;
+
+  for (int i=0;i<6000;i++) {
+    //a vector of indices for randomly choosing points later
+    std::vector<int> v;
+    for (int i=0;i<matchList.size();i++) {
+      v.push_back(i);
+    }
+
+    std::vector<int> inlier;
+    double origin[8];
+    double match[8];
+
+    for (int k=0;k<4;k++) {
+      int random = rand() % v.size();
+      int randIndex = v[random];
+      // std::cout << randIndex << " and the are " << v.size() << "left to test." << "\n";
+      v.erase(v.begin() + random);
+      origin[k*2] = originFeatures[randIndex].first;
+      origin[k*2+1] = originFeatures[randIndex].second;
+      match[k*2] = matchList[randIndex].first;
+      match[k*2+1] = matchList[randIndex].second;
+    }
+
+    //COMPUTE HOMOGRAPHY
+    double** homographyMatrix = R2Image::homographyEstimate(origin, match);
+    //COMPUTE THE MATCH FEATURE POINT
+    //loop through all feature points and find the error distance.
+    for (int j=0;j<features.size();j++) {
+      double scale = homographyMatrix[3][1] * originFeatures[j].first
+                + homographyMatrix[3][2] * originFeatures[j].second
+                + homographyMatrix[3][3];
+      double matchX = (homographyMatrix[1][1] * originFeatures[j].first
+                  + homographyMatrix[1][2] * originFeatures[j].second
+                  + homographyMatrix[1][3]) / scale;
+      double matchY = (homographyMatrix[2][1] * originFeatures[j].first
+                     + homographyMatrix[2][2] * originFeatures[j].second
+                     + homographyMatrix[2][3]) / scale;
+      double xDelta = matchX - (double)matchList[j].first;
+      double yDelta = matchY - (double)matchList[j].second;
+      double error = xDelta * xDelta + yDelta * yDelta;
+      if (error <= 16) {
+        //if error is lower than threshold, then count as inlier.
+        inlier.push_back(j);
+      }
+    }
+    //update the max inlier size
+    if (inlier.size() > maxInlier.size()) {
+      maxInlier = inlier;
+    }
+  }
+  std::cout<< "Current Max Inlier Size is: " << maxInlier.size() <<"\n";
+
+  // Now that we have all the inlier points, we can compute a much more precise
+  // homography matrix using all these points in homographyEstimate.
+  std::vector<int> origin;
+  std::vector<int> match;
+  std::vector< std::pair <int, int> > newMatchList;
+  std::vector< std::pair <int, int> > newOriginList;
+  for (int i=0;i<maxInlier.size();i++) {
+    int index = maxInlier[i];
+    origin.push_back(originFeatures[index].first);
+    origin.push_back(originFeatures[index].second);
+    match.push_back(matchList[index].first);
+    match.push_back(matchList[index].second);
+    newOriginList.push_back(originFeatures[index]);
+    newMatchList.push_back(matchList[index]);
+  }
+  double** homographyMat = multiplePointHomography(match, origin);
+  *this = R2Image(*otherImage);
+  this->originFeatures = newOriginList;
+  this->curFeatures = newMatchList;
+  this->curHomography = homographyMat;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      double scale = homographyMat[3][1] * x
+                   + homographyMat[3][2] * y
+                   + homographyMat[3][3];
+      scale *= replaceScale;
+      double matchX = (homographyMat[1][1] * x
+                     + homographyMat[1][2] * y
+                     + homographyMat[1][3]) / scale - xDisplacement;
+      double matchY = (homographyMat[2][1] * x
+                     + homographyMat[2][2] * y
+                     + homographyMat[2][3]) / scale - yDisplacement;
+      if (matchX>= 0 && matchX<skyImage->width && matchY>=0 && matchY<skyImage->height) {
+        // otherImage->Pixel(x, y) = otherImage->Pixel(x, y) * .5 + otherImage->Pixel(matchX, matchY) * .5;
+        double alphaScore = std::max((otherImage->Pixel(x, y).Luminance() - .3), 0.0) / .7;
+        double skyAlphaScore = std::max((skyImage->Pixel(matchX, matchY).Luminance() - .1), 0.0) / .9;
+        double heightScore = std::max((y*1.0/(otherImage->height) - .2), 0.0) / .8;
+        double totalScore = alphaScore * heightScore;
+        // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(1.0-backgroundOpacity) + otherImage->Pixel(x, y)*(backgroundOpacity);
+        //NOTE: Sky Replacement Blend
+        // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(totalScore)//*(1-backgroundOpacity)
+        //                         + otherImage->Pixel(x, y)*(1-totalScore);//*(backgroundOpacity);
+        //NOTE: Multiply Blend Mode
+        // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*otherImage->Pixel(x, y);//*(backgroundOpacity);
+        //NOTE: Screen Blend Mode
+        R2Pixel white = R2Pixel(1, 1, 1, 1);
+        // otherImage->Pixel(x, y) = white - (white - skyImage->Pixel(matchX, matchY)) *
+        //                               (white - otherImage->Pixel(x, y));//*(backgroundOpacity);
+        //NOTE: TECH BLEND
+        otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*alphaImage->Pixel(matchX, matchY)//*(1-backgroundOpacity)
+                                + otherImage->Pixel(x, y)*(white - alphaImage->Pixel(matchX, matchY));//*(backgroundOpacity);
+      }
+    }
+  }
+
+  for (int i=0;i<matchList.size();i++) {
+    int x1 = features.at(i).first;
+    int y1 = features.at(i).second;
+    int x2 = matchList.at(i).first;
+    int y2 = matchList.at(i).second;
+    std::vector<int>::iterator pos = std::find(maxInlier.begin(), maxInlier.end(), i);
+    if (pos != maxInlier.end()) {
+      // newMatchList.push_back(matchList.at(i));
+      // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "yellow");
+      // maxInlier.erase(pos);
+      otherImage->drawLine(x1, y1, x2, y2, "false");
+    } else {
+      // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
+      otherImage->drawLine(x1, y1, x2, y2, "true");
+    }
+  }
+  return;
 }
 
 double** R2Image::

@@ -144,15 +144,17 @@ main(int argc, char **argv)
     double y = atof(argv[i+3]);
 		printf("Video processing started\n");
 
-		char inputName[100] = "../board/input%07d.jpg";
-    char inputName2[100] = "../board2/input%07d.jpg";
+		char inputName[100] = "../videoinput/input%07d.jpg";
+    char inputName2[100] = "../debris/input%07d.jpg";
+    char alphaChannel[100] = "../alpha/input%07d.jpg";
 		char outputName[100] = "../board3/output%07d.jpg";
 
 		R2Image *mainImage = new R2Image();
-    R2Image *skyImage = new R2Image("../crack.jpg");
+    // R2Image *skyImage = new R2Image("../circle.jpg");
 
 		char currentFilename[100];
     char currentFilename2[100];
+    char alphaName[100];
 		char currentOutputFilename[100];
 		if (!mainImage) {
 			fprintf(stderr, "Unable to allocate image\n");
@@ -176,17 +178,15 @@ main(int argc, char **argv)
       float percentage = i*1.0/end;
 			R2Image *currentImage = new R2Image();
       R2Image *backImage = new R2Image();
-			if (!currentImage) {
-				fprintf(stderr, "Unable to allocate image %d\n",i);
-				exit(-1);
-			}
-      if (!backImage) {
+      R2Image *alphaImage = new R2Image();
+			if (!currentImage || !backImage || !alphaImage) {
 				fprintf(stderr, "Unable to allocate image %d\n",i);
 				exit(-1);
 			}
 
 			sprintf(currentFilename, inputName, i);
       sprintf(currentFilename2, inputName2, i);
+      sprintf(alphaName, alphaChannel, i);
 			sprintf(currentOutputFilename, outputName, i);
 
 			printf("Processing file %s\n", currentFilename);
@@ -194,11 +194,18 @@ main(int argc, char **argv)
 				fprintf(stderr, "Unable to read image %d\n", i);
 				exit(-1);
 			}
-      // printf("Processing file %s\n", currentFilename2);
-      // if (!backImage->Read(currentFilename2)) {
-      //   fprintf(stderr, "Unable to read image %d\n", i);
-      //   exit(-1);
-      // }
+      //NOTE: Video Replacement
+      printf("Processing file %s\n", currentFilename2);
+      if (!backImage->Read(currentFilename2)) {
+        fprintf(stderr, "Unable to read image %d\n", i);
+        exit(-1);
+      }
+      //NOTE: Alpha Matte Information
+      printf("Processing file %s\n", alphaName);
+      if (!alphaImage->Read(alphaName)) {
+        fprintf(stderr, "Unable to read image %d\n", i);
+        exit(-1);
+      }
       // Color correction
       // currentImage->ColorCorrection(.85, .9, 1.08);
       // FrameProcessing would process the current input currentImage, as well as writing the output to currentImage
@@ -206,7 +213,9 @@ main(int argc, char **argv)
       //NOTE: VIDEO REPLACEMENT
       // mainImage->frameProcessing(currentImage, backImage, percentage, scale, x, y);
       //NOTE: IMAGE REPLACEMENT
-      mainImage->frameProcessing(currentImage, skyImage, percentage, scale, x, y);
+      // mainImage->frameProcessing(currentImage, skyImage, percentage, scale, x, y);
+      //NOTE: VIDEO REPLACEMENT
+      mainImage->frameAlphaProcessing(currentImage, backImage, alphaImage, scale, x, y);
 			// write result to file
 			if (!currentImage->Write(currentOutputFilename)) {
 				fprintf(stderr, "Unable to write %s\n", currentOutputFilename);

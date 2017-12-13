@@ -2,14 +2,15 @@
 Camera tracking and post-production project for Computer Vision class.
 
 
-
-./ffmpeg -r 60 -f image2 -s 1920x1080 -start_number 1 -i videooutput/output%07d.jpg -vframes 100 -vcodec libx264 -crf 25  -pix_fmt yuv420p thavytest.mp4  
--r frames per second
+../ffmpeg-3.4/ffmpeg -r 24 -f image2 -s 1920x1080 -i output%07d.jpg  -qscale:v 1 -pix_fmt yuv420p test.mp4
 
 please run this at 60/30/10 fps for images to videos
 
 
-./ffmpeg -i "../IMG_8877 2.MOV" ../myfolder/input%07d.jpg
-
+../ffmpeg-3.4/ffmpeg -i ./alpha.mov -qscale:v 1 ./input%07d.jpg
 
 please run this for video to images
+
+../ffmpeg-3.4/ffmpeg -i alpha.mov -vf alphaextract,format=yuv420p alpha.mov 
+
+please run this to extract alpha layer of the pre-keyed video footage

@@ -144,13 +144,13 @@ main(int argc, char **argv)
     double y = atof(argv[i+3]);
 		printf("Video processing started\n");
 
-		char inputName[100] = "../videoinput/input%07d.jpg";
-    char inputName2[100] = "../debris/input%07d.jpg";
-    char alphaChannel[100] = "../alpha/input%07d.jpg";
+		char inputName[100] = "../AITtest/input%07d.jpg";
+    char inputName2[100] = "../crashStone/crash/input%07d.jpg";
+    char alphaChannel[100] = "../crashStone/alpha/input%07d.jpg";
 		char outputName[100] = "../board3/output%07d.jpg";
 
 		R2Image *mainImage = new R2Image();
-    // R2Image *skyImage = new R2Image("../circle.jpg");
+    // R2Image *skyImage = new R2Image("../crack.jpg");
 
 		char currentFilename[100];
     char currentFilename2[100];
@@ -214,7 +214,7 @@ main(int argc, char **argv)
       // mainImage->frameProcessing(currentImage, backImage, percentage, scale, x, y);
       //NOTE: IMAGE REPLACEMENT
       // mainImage->frameProcessing(currentImage, skyImage, percentage, scale, x, y);
-      //NOTE: VIDEO REPLACEMENT
+      //NOTE: VIDEO REPLACEMENT with ALPHA MATTE
       mainImage->frameAlphaProcessing(currentImage, backImage, alphaImage, scale, x, y);
 			// write result to file
 			if (!currentImage->Write(currentOutputFilename)) {

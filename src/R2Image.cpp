@@ -428,7 +428,7 @@ Harris(double sigma)
 	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
   //this->Greyscale();
   int featureDistance = 48;
-  int numFeature = 350;
+  int numFeature = 400;
   R2Image* sobelX2 = new R2Image(*this);
   sobelX2->SobelX();
   R2Image* sobelY2 = new R2Image(*this);
@@ -1258,34 +1258,34 @@ frameProcessing(R2Image * otherImage, R2Image * skyImage, double percentage, dou
         // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(totalScore)//*(1-backgroundOpacity)
         //                         + otherImage->Pixel(x, y)*(1-totalScore);//*(backgroundOpacity);
         //NOTE: Multiply Blend Mode
-        // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*otherImage->Pixel(x, y);//*(backgroundOpacity);
+        otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*otherImage->Pixel(x, y);//*(backgroundOpacity);
         //NOTE: Screen Blend Mode
         // R2Pixel white = R2Pixel(1, 1, 1, 1);
         // otherImage->Pixel(x, y) = white - (white - skyImage->Pixel(matchX, matchY)) *
         //                               (white - otherImage->Pixel(x, y));//*(backgroundOpacity);
         //NOTE: TECH BLEND
-        otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(skyAlphaScore)//*(1-backgroundOpacity)
-                                + otherImage->Pixel(x, y)*(1-skyAlphaScore);//*(backgroundOpacity);
+        // otherImage->Pixel(x, y) = skyImage->Pixel(matchX, matchY)*(skyAlphaScore)//*(1-backgroundOpacity)
+        //                         + otherImage->Pixel(x, y)*(1-skyAlphaScore);//*(backgroundOpacity);
       }
     }
   }
 
-  for (int i=0;i<matchList.size();i++) {
-    int x1 = features.at(i).first;
-    int y1 = features.at(i).second;
-    int x2 = matchList.at(i).first;
-    int y2 = matchList.at(i).second;
-    std::vector<int>::iterator pos = std::find(maxInlier.begin(), maxInlier.end(), i);
-    if (pos != maxInlier.end()) {
-      // newMatchList.push_back(matchList.at(i));
-      // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "yellow");
-      // maxInlier.erase(pos);
-      otherImage->drawLine(x1, y1, x2, y2, "false");
-    } else {
-      // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
-      otherImage->drawLine(x1, y1, x2, y2, "true");
-    }
-  }
+  // for (int i=0;i<matchList.size();i++) {
+  //   int x1 = features.at(i).first;
+  //   int y1 = features.at(i).second;
+  //   int x2 = matchList.at(i).first;
+  //   int y2 = matchList.at(i).second;
+  //   std::vector<int>::iterator pos = std::find(maxInlier.begin(), maxInlier.end(), i);
+  //   if (pos != maxInlier.end()) {
+  //     // newMatchList.push_back(matchList.at(i));
+  //     // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "yellow");
+  //     // maxInlier.erase(pos);
+  //     otherImage->drawLine(x1, y1, x2, y2, "false");
+  //   } else {
+  //     // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
+  //     otherImage->drawLine(x1, y1, x2, y2, "true");
+  //   }
+  // }
 	return;
 }
 
@@ -1475,22 +1475,22 @@ frameAlphaProcessing(R2Image * otherImage, R2Image * skyImage, R2Image * alphaIm
     }
   }
 
-  for (int i=0;i<matchList.size();i++) {
-    int x1 = features.at(i).first;
-    int y1 = features.at(i).second;
-    int x2 = matchList.at(i).first;
-    int y2 = matchList.at(i).second;
-    std::vector<int>::iterator pos = std::find(maxInlier.begin(), maxInlier.end(), i);
-    if (pos != maxInlier.end()) {
-      // newMatchList.push_back(matchList.at(i));
-      // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "yellow");
-      // maxInlier.erase(pos);
-      otherImage->drawLine(x1, y1, x2, y2, "false");
-    } else {
-      // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
-      otherImage->drawLine(x1, y1, x2, y2, "true");
-    }
-  }
+  // for (int i=0;i<matchList.size();i++) {
+  //   int x1 = features.at(i).first;
+  //   int y1 = features.at(i).second;
+  //   int x2 = matchList.at(i).first;
+  //   int y2 = matchList.at(i).second;
+  //   std::vector<int>::iterator pos = std::find(maxInlier.begin(), maxInlier.end(), i);
+  //   if (pos != maxInlier.end()) {
+  //     // newMatchList.push_back(matchList.at(i));
+  //     // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "yellow");
+  //     // maxInlier.erase(pos);
+  //     otherImage->drawLine(x1, y1, x2, y2, "false");
+  //   } else {
+  //     // otherImage->drawPoint(matchList.at(i).first, matchList.at(i).second, "red");
+  //     otherImage->drawLine(x1, y1, x2, y2, "true");
+  //   }
+  // }
   return;
 }
 
